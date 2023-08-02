@@ -32,7 +32,7 @@ export FLAGS+=" -Os -fPIC"
 # Remove async exception unwind/backtrace tables
 # Allow linker to remove unused sections
 if [ "$LINUX" = true ]; then
-  export FLAGS+=" -D_GLIBCXX_USE_CXX11_ABI=1 -fno-asynchronous-unwind-tables -ffunction-sections -fdata-sections"
+  export FLAGS+=" -D_GLIBCXX_USE_CXX11_ABI=1 -fno-asynchronous-unwind-tables -ffunction-sections -fdata-sections -pthread"
 fi
 
 # Common build paths and flags
@@ -94,7 +94,7 @@ export RUSTFLAGS+=" --remap-path-prefix=$CARGO_HOME/registry/="
 unset PKG_CONFIG_PATH
 
 # Common options for curl
-CURL="curl --silent --location --retry 3 --retry-max-time 30"
+CURL="curl --silent --location --retry 5 --retry-max-time 30"
 
 # Dependency version numbers
 VERSION_ZLIB_NG=2.1.3
@@ -127,6 +127,8 @@ VERSION_HEIF=1.16.2
 VERSION_CGIF=0.3.2
 VERSION_PDFIUM=5921
 VERSION_JEMALLOC=5.3.0
+VERSION_GPERFTOOL=2.10.80
+VERSION_LIBTOOL=2.4.7
 
 # Remove patch version component
 without_patch() {
@@ -188,7 +190,9 @@ version_latest "aom" "$VERSION_AOM" "17628"
 version_latest "heif" "$VERSION_HEIF" "64439"
 version_latest "cgif" "$VERSION_CGIF" "368524"
 version_latest "pdfium" "$VERSION_PDFIUM" "bblanchon/pdfium-binaries"
-version_latest "jemalloc" "$VERSION_JEMALLOC" "jemalloc/jemalloc"
+version_latest "jemalloc" "$VERSION_JEMALLOC" "1441"
+version_latest "gperftool" "$VERSION_GPERFTOOL" "1238"
+version_latest "libtool" "$VERSION_LIBTOOL" "1741"
 
 if [ "$ALL_AT_VERSION_LATEST" = "false" ]; then exit 1; fi
 
@@ -211,6 +215,22 @@ if [ "${PLATFORM%-*}" == "linux-musl" ] || [ "$DARWIN" = true ]; then
   meson setup _build --default-library=static --buildtype=release --strip --prefix=${TARGET} ${MESON}
   meson install -C _build --tag devel
 fi
+
+mkdir ${DEPS}/libtool
+$CURL https://ftpmirror.gnu.org/libtool/libtool-${VERSION_LIBTOOL}.tar.gz | tar xzC ${DEPS}/libtool --strip-components=1
+cd ${DEPS}/libtool
+./configure
+make
+make install
+export ACLOCAL_PATH="/usr/local/share/aclocal"
+
+mkdir ${DEPS}/gperftools
+$CURL https://github.com/gperftools/gperftools/archive/refs/tags/gperftools-${VERSION_GPERFTOOL}.tar.gz | tar xzC ${DEPS}/gperftools --strip-components=1
+cd ${DEPS}/gperftools
+./autogen.sh
+./configure --prefix=${TARGET} --disable-cpu-profiler --disable-heap-profiler --disable-heap-checker --disable-debugalloc
+make
+make install
 
 mkdir ${DEPS}/jemalloc
 $CURL https://github.com/jemalloc/jemalloc/releases/download/${VERSION_JEMALLOC}/jemalloc-${VERSION_JEMALLOC}.tar.bz2 | tar xjC ${DEPS}/jemalloc --strip-components=1
@@ -456,7 +476,6 @@ Libs: -L\${libdir} -lpdfium
 Cflags: -I\${includedir}
 EOF
 
-
 mkdir ${DEPS}/rsvg
 $CURL https://download.gnome.org/sources/librsvg/$(without_patch $VERSION_RSVG)/librsvg-${VERSION_RSVG}.tar.xz | tar xJC ${DEPS}/rsvg --strip-components=1
 cd ${DEPS}/rsvg
@@ -513,7 +532,8 @@ rm -rf ${TARGET}/lib/{pkgconfig,.libs,*.la,cmake}
 
 mkdir ${TARGET}/lib-filtered
 mv ${TARGET}/lib/glib-2.0 ${TARGET}/lib-filtered
-mv ${TARGET}/lib/libjemalloc* ${TARGET}/lib-filtered
+mv ${TARGET}/lib/libjemalloc.so.2 ${TARGET}/lib-filtered
+mv ${TARGET}/lib/libtcmalloc_minimal.so.4.5.11 ${TARGET}/lib-filtered
 
 # Pack only the relevant libraries
 # Note: we can't use ldd on Linux, since that can only be executed on the target machine
@@ -587,10 +607,13 @@ printf "{\n\
   \"fribidi\": \"${VERSION_FRIBIDI}\",\n\
   \"gdkpixbuf\": \"${VERSION_GDKPIXBUF}\",\n\
   \"glib\": \"${VERSION_GLIB}\",\n\
+  \"gperftool\": \"${VERSION_GPERFTOOL}\",\n\
   \"harfbuzz\": \"${VERSION_HARFBUZZ}\",\n\
   \"heif\": \"${VERSION_HEIF}\",\n\
   \"imagequant\": \"${VERSION_IMAGEQUANT}\",\n\
+  \"jemallic\": \"${VERSION_JEMALLOC}\",\n\
   \"lcms\": \"${VERSION_LCMS2}\",\n\
+  \"libtool\": \"${VERSION_LCMS2}\",\n\
   \"mozjpeg\": \"${VERSION_MOZJPEG}\",\n\
   \"orc\": \"${VERSION_ORC}\",\n\
   \"pango\": \"${VERSION_PANGO}\",\n\
