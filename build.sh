@@ -79,7 +79,7 @@ if ! [ -x "$(command -v docker)" ]; then
 fi
 
 # Update base images
-for baseimage in alpine:3.12 centos:7 debian:bullseye; do
+for baseimage in alpine:3.12 amazonlinux:2 debian:bullseye; do
   docker pull $baseimage
 done
 
@@ -95,8 +95,14 @@ done
 # Linux (x64, ARMv7 and ARM64v8)
 for flavour in linux-x64 linux-arm linux-arm64 linux-musl-x64 linux-musl-arm64; do
   if [ $PLATFORM = "all" ] || [ $PLATFORM = $flavour ]; then
-    echo "Building $flavour..."
-    docker build --cache-from vips-dev-$flavour -t vips-dev-$flavour $flavour
-    docker run --rm -e "VERSION_VIPS=$VERSION_VIPS" -e VERSION_LATEST_REQUIRED -v $PWD:/packaging vips-dev-$flavour sh -c "/packaging/build/lin.sh"
+    if [ $PLATFORM = "linux-x64" ] && [ $(uname -m) == "arm64" ] ; then
+      echo "Cross building $flavour..."
+      docker build --platform linux/amd64 --cache-from vips-dev-$flavour -t vips-dev-$flavour $flavour
+      docker run --platform linux/amd64 --rm -e "VERSION_VIPS=$VERSION_VIPS" -e ROSETTA=true-e VERSION_LATEST_REQUIRED -v $PWD:/packaging vips-dev-$flavour sh -c "/packaging/build/lin.sh"
+    else 
+      echo "Building $flavour..."
+      docker build --cache-from vips-dev-$flavour -t vips-dev-$flavour $flavour
+      docker run --rm -e "VERSION_VIPS=$VERSION_VIPS" -e VERSION_LATEST_REQUIRED -v $PWD:/packaging vips-dev-$flavour sh -c "/packaging/build/lin.sh"
+    fi
   fi
 done
