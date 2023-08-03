@@ -235,7 +235,11 @@ make install
 mkdir ${DEPS}/jemalloc
 $CURL https://github.com/jemalloc/jemalloc/releases/download/${VERSION_JEMALLOC}/jemalloc-${VERSION_JEMALLOC}.tar.bz2 | tar xjC ${DEPS}/jemalloc --strip-components=1
 cd ${DEPS}/jemalloc
-./configure --prefix=${TARGET}
+if [ "$ROSETTA" == "true" ]; then
+  ./configure --prefix=${TARGET} --with-lg-vaddr=48
+else
+  ./configure --prefix=${TARGET}
+fi
 make build_lib_shared
 make install_lib_shared
 
