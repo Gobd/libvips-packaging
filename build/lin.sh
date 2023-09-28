@@ -60,6 +60,8 @@ if [ "$PLATFORM" == "linux-arm" ]; then
 fi
 
 if [ "$DARWIN" = true ]; then
+  # Let macOS linker remove unused code
+  export LDFLAGS+=" -Wl,-dead_strip"
   # Local rust installation
   export CARGO_HOME="${DEPS}/cargo"
   export RUSTUP_HOME="${DEPS}/rustup"
@@ -99,35 +101,35 @@ CURL="curl --silent --location --retry 5 --retry-max-time 30"
 # Dependency version numbers
 VERSION_ZLIB_NG=2.1.3
 VERSION_FFI=3.4.4
-VERSION_GLIB=2.77.2
+VERSION_GLIB=2.78.0
 VERSION_XML2=2.11.5
 VERSION_EXIF=0.6.24
 VERSION_LCMS2=2.15
-VERSION_MOZJPEG=4.1.3
+VERSION_MOZJPEG=4.1.4
 VERSION_PNG16=1.6.40
 VERSION_SPNG=0.7.4
 VERSION_IMAGEQUANT=2.4.1
-VERSION_WEBP=1.3.1
-VERSION_TIFF=4.5.1
+VERSION_WEBP=1.3.2
+VERSION_TIFF=4.6.0
 VERSION_ORC=0.4.34
 VERSION_PROXY_LIBINTL=0.4
 VERSION_GDKPIXBUF=2.42.10
-VERSION_FREETYPE=2.13.1
+VERSION_FREETYPE=2.13.2
 VERSION_EXPAT=2.5.0
-VERSION_ARCHIVE=3.7.1
+VERSION_ARCHIVE=3.7.2
 VERSION_FONTCONFIG=2.14.2
-VERSION_HARFBUZZ=8.1.1
+VERSION_HARFBUZZ=8.2.1
 VERSION_PIXMAN=0.42.2
-VERSION_CAIRO=1.17.8
+VERSION_CAIRO=1.18.0
 VERSION_FRIBIDI=1.0.13
 VERSION_PANGO=1.51.0
-VERSION_RSVG=2.56.92
-VERSION_AOM=3.6.1
+VERSION_RSVG=2.57.0
+VERSION_AOM=3.7.0
 VERSION_HEIF=1.16.2
 VERSION_CGIF=0.3.2
-VERSION_PDFIUM=5947
+VERSION_PDFIUM=6029
 VERSION_JEMALLOC=5.3.0
-VERSION_GPERFTOOL=2.11
+VERSION_GPERFTOOL=2.13
 VERSION_LIBTOOL=2.4.7
 
 # Remove patch version component
@@ -171,7 +173,7 @@ version_latest "lcms2" "$VERSION_LCMS2" "9815"
 version_latest "mozjpeg" "$VERSION_MOZJPEG" "368518"
 version_latest "png" "$VERSION_PNG16" "1705"
 version_latest "spng" "$VERSION_SPNG" "24289"
-version_latest "webp" "$VERSION_WEBP" "1761"
+version_latest "webp" "$VERSION_WEBP" "webmproject/libwebp"
 version_latest "tiff" "$VERSION_TIFF" "1738"
 version_latest "orc" "$VERSION_ORC" "2573"
 version_latest "proxy-libintl" "$VERSION_PROXY_LIBINTL" "368527"
@@ -247,7 +249,7 @@ mkdir ${DEPS}/zlib-ng
 $CURL https://github.com/zlib-ng/zlib-ng/archive/${VERSION_ZLIB_NG}.tar.gz | tar xzC ${DEPS}/zlib-ng --strip-components=1
 cd ${DEPS}/zlib-ng
 CFLAGS="${CFLAGS} -O3" cmake -G"Unix Makefiles" \
-  -DCMAKE_TOOLCHAIN_FILE=${ROOT}/Toolchain.cmake -DCMAKE_INSTALL_PREFIX=${TARGET} -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_TOOLCHAIN_FILE=${ROOT}/Toolchain.cmake -DCMAKE_INSTALL_PREFIX=${TARGET} -DCMAKE_INSTALL_LIBDIR=lib -DCMAKE_BUILD_TYPE=Release \
   -DBUILD_SHARED_LIBS=FALSE -DZLIB_COMPAT=TRUE
 make install/strip
 
@@ -290,6 +292,11 @@ CFLAGS="${CFLAGS} -O3" meson setup _build --default-library=static --buildtype=r
 meson install -C _build --tag devel
 
 mkdir ${DEPS}/aom
+# NASM >= 2.14 is required to build libaom 3.7.0, see:
+# https://gitlab.kitware.com/cmake/cmake/-/issues/12919
+if [[ "$(nasm -v)" == "NASM version 2.10"* ]]; then
+  VERSION_AOM="3.6.1"
+fi
 $CURL https://storage.googleapis.com/aom-releases/libaom-${VERSION_AOM}.tar.gz | tar xzC ${DEPS}/aom --strip-components=1
 cd ${DEPS}/aom
 mkdir aom_build
@@ -297,7 +304,7 @@ cd aom_build
 AOM_AS_FLAGS="${FLAGS}" cmake -G"Unix Makefiles" \
   -DCMAKE_TOOLCHAIN_FILE=${ROOT}/Toolchain.cmake -DCMAKE_INSTALL_PREFIX=${TARGET} -DCMAKE_INSTALL_LIBDIR=lib -DCMAKE_BUILD_TYPE=MinSizeRel \
   -DBUILD_SHARED_LIBS=FALSE -DENABLE_DOCS=0 -DENABLE_TESTS=0 -DENABLE_TESTDATA=0 -DENABLE_TOOLS=0 -DENABLE_EXAMPLES=0 \
-  -DCONFIG_PIC=1 -DENABLE_NASM=1 ${WITHOUT_NEON:+-DENABLE_NEON=0} ${DARWIN_ARM:+-DCONFIG_RUNTIME_CPU_DETECT=0} \
+  -DCONFIG_PIC=1 -DENABLE_NASM=1 ${DARWIN_ARM:+-DCONFIG_RUNTIME_CPU_DETECT=0} \
   -DCONFIG_AV1_HIGHBITDEPTH=0 -DCONFIG_WEBM_IO=0 \
   ..
 make install/strip
@@ -317,8 +324,6 @@ make install/strip
 mkdir ${DEPS}/jpeg
 $CURL https://github.com/mozilla/mozjpeg/archive/v${VERSION_MOZJPEG}.tar.gz | tar xzC ${DEPS}/jpeg --strip-components=1
 cd ${DEPS}/jpeg
-# https://github.com/mozilla/mozjpeg/pull/432
-$CURL https://github.com/libjpeg-turbo/libjpeg-turbo/commit/d743a2c12e889f7605a56f5144ae2e3899c9dd4f.patch | patch -p1
 cmake -G"Unix Makefiles" \
   -DCMAKE_TOOLCHAIN_FILE=${ROOT}/Toolchain.cmake -DCMAKE_INSTALL_PREFIX=${TARGET} -DCMAKE_INSTALL_LIBDIR:PATH=lib -DCMAKE_BUILD_TYPE=MinSizeRel \
   -DENABLE_STATIC=TRUE -DENABLE_SHARED=FALSE -DWITH_JPEG8=1 -DWITH_TURBOJPEG=FALSE -DPNG_SUPPORTED=FALSE
@@ -347,7 +352,7 @@ mkdir ${DEPS}/webp
 $CURL https://storage.googleapis.com/downloads.webmproject.org/releases/webp/libwebp-${VERSION_WEBP}.tar.gz | tar xzC ${DEPS}/webp --strip-components=1
 cd ${DEPS}/webp
 ./configure --host=${CHOST} --prefix=${TARGET} --enable-static --disable-shared --disable-dependency-tracking \
-  --enable-libwebpmux --enable-libwebpdemux ${WITHOUT_NEON:+--disable-neon}
+  --enable-libwebpmux --enable-libwebpdemux
 make install-strip
 
 mkdir ${DEPS}/tiff
@@ -438,10 +443,10 @@ meson setup _build --default-library=static --buildtype=release --strip --prefix
 meson install -C _build --tag devel
 
 mkdir ${DEPS}/cairo
-$CURL https://gitlab.freedesktop.org/cairo/cairo/-/archive/${VERSION_CAIRO}/cairo-${VERSION_CAIRO}.tar.bz2 | tar xjC ${DEPS}/cairo --strip-components=1
+$CURL https://cairographics.org/releases/cairo-${VERSION_CAIRO}.tar.xz | tar xJC ${DEPS}/cairo --strip-components=1
 cd ${DEPS}/cairo
 meson setup _build --default-library=static --buildtype=release --strip --prefix=${TARGET} ${MESON} \
-  ${LINUX:+-Dquartz=disabled} ${DARWIN:+-Dquartz=enabled} -Dxcb=disabled -Dxlib=disabled -Dzlib=disabled \
+  ${LINUX:+-Dquartz=disabled} ${DARWIN:+-Dquartz=enabled} -Dtee=disabled -Dxcb=disabled -Dxlib=disabled -Dzlib=disabled \
   -Dtests=disabled -Dspectre=disabled -Dsymbol-lookup=disabled
 meson install -C _build --tag devel
 
@@ -488,7 +493,7 @@ sed -i'.bak' "s/^\(Requires:.*\)/\1 cairo-gobject pangocairo libxml-2.0/" librsv
 # LTO optimization does not work for staticlib+rlib compilation
 sed -i'.bak' "/crate-type = /s/, \"rlib\"//" librsvg-c/Cargo.toml
 # We build Cairo with `-Dzlib=disabled`, which implicitly disables the PDF/PostScript surface backends
-sed -i'.bak' "/cairo-rs = /s/ \"pdf\", \"ps\",//" {librsvg-c,rsvg}/Cargo.toml
+sed -i'.bak' "/cairo-rs = /s/, \"pdf\", \"ps\"//" {librsvg-c,rsvg}/Cargo.toml
 # Remove the --static flag from the PKG_CONFIG env since Rust does not
 # support that. Build with PKG_CONFIG_ALL_STATIC=1 instead.
 PKG_CONFIG=${PKG_CONFIG/ --static/} ./configure --host=${CHOST} --prefix=${TARGET} --enable-static --disable-shared --disable-dependency-tracking \
@@ -515,9 +520,6 @@ if [ "$LINUX" = true ]; then
   # Localize the g_param_spec_types symbol to avoid collisions with shared libraries
   # See: https://github.com/lovell/sharp/issues/2535#issuecomment-766400693
   printf "{local:g_param_spec_types;};" > vips.map
-elif [ "$DARWIN" = true ]; then
-  # https://github.com/pybind/pybind11/issues/595
-  export STRIP="strip -x"
 fi
 # Disable building man pages, gettext po files, tools, and (fuzz-)tests
 sed -i'.bak' "/subdir('man')/{N;N;N;N;d;}" meson.build
@@ -535,7 +537,7 @@ rm -rf ${TARGET}/lib/{pkgconfig,.libs,*.la,cmake}
 mkdir ${TARGET}/lib-filtered
 mv ${TARGET}/lib/glib-2.0 ${TARGET}/lib-filtered
 mv ${TARGET}/lib/libjemalloc.so.2 ${TARGET}/lib-filtered
-mv ${TARGET}/lib/libtcmalloc_minimal.so.4.5.12 ${TARGET}/lib-filtered/libtcmalloc_minimal.so.4
+mv ${TARGET}/lib/libtcmalloc_minimal.so.4.5.14 ${TARGET}/lib-filtered/libtcmalloc_minimal.so.4
 
 # Pack only the relevant libraries
 # Note: we can't use ldd on Linux, since that can only be executed on the target machine
