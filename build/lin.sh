@@ -537,7 +537,7 @@ rm -rf ${TARGET}/lib/{pkgconfig,.libs,*.la,cmake}
 mkdir ${TARGET}/lib-filtered
 mv ${TARGET}/lib/glib-2.0 ${TARGET}/lib-filtered
 mv ${TARGET}/lib/libjemalloc.so.2 ${TARGET}/lib-filtered
-mv ${TARGET}/lib/libtcmalloc_minimal.so.4.5.12 ${TARGET}/lib-filtered/libtcmalloc_minimal.so.4
+mv ${TARGET}/lib/libtcmalloc_minimal.so.4.5.14 ${TARGET}/lib-filtered/libtcmalloc_minimal.so.4
 
 # Pack only the relevant libraries
 # Note: we can't use ldd on Linux, since that can only be executed on the target machine
