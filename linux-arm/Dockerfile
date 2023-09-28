@@ -35,10 +35,10 @@ RUN \
   ln -s /usr/bin/cmake3 /usr/bin/cmake && \
   pip3 install meson ninja
 
-# Download and install crosstool-ng 1.25.0
+# Download and install crosstool-ng 1.26.0
 WORKDIR /crosstool-ng
 RUN \
-  curl -sL https://github.com/crosstool-ng/crosstool-ng/releases/download/crosstool-ng-1.25.0/crosstool-ng-1.25.0.tar.xz | \
+  curl -sL https://github.com/crosstool-ng/crosstool-ng/releases/download/crosstool-ng-1.26.0/crosstool-ng-1.26.0.tar.xz | \
     tar xJC /crosstool-ng --strip-components=1 && \
   ./bootstrap && \
   ./configure --prefix=/usr/local && \
@@ -47,15 +47,13 @@ RUN \
   cd .. && \
   rm -rf crosstool-ng
 
-# Build cross-compiler (GCC 11.2.0 - glibc 2.17)
+# Build cross-compiler (GCC 13.2.0 - glibc 2.17)
 WORKDIR /x-tools/build
 
 COPY armv7-linux-gnueabihf.config /x-tools/build/.config
 
 RUN \
   ct-ng olddefconfig && \
-  # https://github.com/crosstool-ng/crosstool-ng/issues/1832
-  sed -i 's/CT_ZLIB_VERSION="1.2.12"/CT_ZLIB_VERSION="1.2.13"/g' .config && \
   CT_ALLOW_BUILD_AS_ROOT_SURE=y ct-ng build || (cat build.log && exit 1) && \
   cd .. && \
   rm -rf build
