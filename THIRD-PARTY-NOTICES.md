@@ -15,6 +15,7 @@ used under the terms of the following licences:
 | gdk-pixbuf    | LGPLv3                                                                                                    |
 | glib          | LGPLv3                                                                                                    |
 | harfbuzz      | MIT Licence                                                                                               |
+| highway       | Apache-2.0 License, BSD 3-Clause                                                                          |
 | lcms          | MIT Licence                                                                                               |
 | libarchive    | BSD 2-Clause                                                                                              |
 | libexif       | LGPLv3                                                                                                    |
@@ -25,12 +26,11 @@ used under the terms of the following licences:
 | libpng        | [libpng License](https://github.com/glennrp/libpng/blob/master/LICENSE)                                   |
 | librsvg       | LGPLv3                                                                                                    |
 | libspng       | [BSD 2-Clause, libpng License](https://github.com/randy408/libspng/blob/master/LICENSE)                   |
-| libtiff       | [libtiff License](https://libtiff.gitlab.io/libtiff/misc.html) (BSD-like)                                 |
+| libtiff       | [libtiff License](https://gitlab.com/libtiff/libtiff/blob/master/LICENSE.md) (BSD-like)                   |
 | libvips       | LGPLv3                                                                                                    |
 | libwebp       | New BSD License                                                                                           |
 | libxml2       | MIT Licence                                                                                               |
 | mozjpeg       | [zlib License, IJG License, BSD-3-Clause](https://github.com/mozilla/mozjpeg/blob/master/LICENSE.md)      |
-| orc           | [orc License](https://gitlab.freedesktop.org/gstreamer/orc/blob/master/COPYING) (BSD-like)                |
 | pango         | LGPLv3                                                                                                    |
 | pixman        | MIT Licence                                                                                               |
 | proxy-libintl | LGPLv3                                                                                                    |

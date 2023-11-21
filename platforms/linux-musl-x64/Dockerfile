@@ -1,7 +1,7 @@
-FROM alpine:3.12
+FROM alpine:3.15
 LABEL maintainer="Kleis Auke Wolthuizen <info@kleisauke.nl>"
 
-# Create Alpine 3.12 (musl 1.1.24) container suitable for building Linux x64 binaries
+# Create Alpine 3.15 (musl 1.2.2) container suitable for building Linux x64 binaries
 
 # Path settings
 ENV \
@@ -32,7 +32,6 @@ RUN \
     py3-pip \
     python3 \
     && \
-  apk --update --no-cache --repository https://alpine.global.ssl.fastly.net/alpine/v3.17/community/ add advancecomp && \
   curl https://sh.rustup.rs -sSf | sh -s -- -y \
     --no-modify-path \
     --profile minimal \

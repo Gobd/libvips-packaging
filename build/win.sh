@@ -1,12 +1,6 @@
 #!/usr/bin/env bash
 set -e
 
-case "${PLATFORM#*-}" in
-  x64) ARCH=w64 ;;
-  x86) ARCH=w32 ;;
-  arm64) ARCH=arm64 ;;
-esac
-
 VERSION_VIPS_SHORT=${VERSION_VIPS%.[[:digit:]]*}
 
 # Common options for curl
@@ -16,7 +10,13 @@ CURL="curl --silent --location --retry 3 --retry-max-time 30"
 mkdir /vips
 cd /vips
 
-FILENAME="vips-dev-${ARCH}-web-${VERSION_VIPS}-static.zip"
+case "${PLATFORM#*-}" in
+  x64) ARCH=w64 ;;
+  x86) ARCH=w32 ;;
+  arm64) ARCH=arm64 ;;
+esac
+
+FILENAME="vips-dev-${ARCH}-web-${VERSION_VIPS}-static-ffi.zip"
 URL="https://github.com/libvips/build-win64-mxe/releases/download/v${VERSION_VIPS}/${FILENAME}"
 echo "Downloading $URL"
 $CURL -O $URL
@@ -40,9 +40,6 @@ tar czf /packaging/libvips-${VERSION_VIPS}-${PLATFORM}.tar.gz \
   lib/*.dll \
   versions.json \
   THIRD-PARTY-NOTICES.md
-
-# Recompress using AdvanceCOMP, ~5% smaller
-advdef --recompress --shrink-insane /packaging/libvips-${VERSION_VIPS}-${PLATFORM}.tar.gz
 
 # Allow tarballs to be read outside container
 chmod 644 /packaging/libvips-${VERSION_VIPS}-${PLATFORM}.tar.gz

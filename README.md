@@ -35,16 +35,16 @@ Run the top-level [build script](build.sh) without parameters for help.
 One [build script](build/lin.sh) is used to (cross-)compile
 the same shared libraries within multiple containers.
 
-* [x64 glibc](linux-x64/Dockerfile)
-* [x64 musl](linux-musl-x64/Dockerfile)
-* [ARMv7-A glibc](linux-arm/Dockerfile)
-* [ARM64v8-A glibc](linux-arm64/Dockerfile)
-* [ARM64v8-A musl](linux-musl-arm64/Dockerfile)
+* [x64 glibc](platforms/linux-x64/Dockerfile)
+* [x64 musl](platforms/linux-musl-x64/Dockerfile)
+* [ARMv7-A glibc](platforms/linux-arm/Dockerfile)
+* [ARM64v8-A glibc](platforms/linux-arm64/Dockerfile)
+* [ARM64v8-A musl](platforms/linux-musl-arm64/Dockerfile)
 
 ### Windows
 
 The output of libvips' [build-win64-mxe](https://github.com/libvips/build-win64-mxe)
-static "web" releases are [post-processed](build/win.sh) within a [container](win32/Dockerfile).
+static "web" releases are [post-processed](build/win.sh) within a [container](platforms/win32/Dockerfile).
 
 ### macOS
 
