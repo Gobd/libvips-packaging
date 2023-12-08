@@ -18,7 +18,6 @@ RUN \
     bzip2 \
     cmake3 \
     gcc \
-    gcc-binutils \
     gcc-c++ \
     gettext \
     git \
