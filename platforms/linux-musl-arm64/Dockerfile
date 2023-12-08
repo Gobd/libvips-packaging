@@ -1,7 +1,7 @@
-FROM alpine:3.12
+FROM alpine:3.15
 LABEL maintainer="Kleis Auke Wolthuizen <info@kleisauke.nl>"
 
-# Create Alpine 3.12 (musl 1.1.24) container suitable for cross-compiling musl-based Linux ARM64v8-A binaries
+# Create Alpine 3.15 (musl 1.2.2) container suitable for cross-compiling musl-based Linux ARM64v8-A binaries
 
 # Path settings
 ENV \
@@ -26,13 +26,11 @@ RUN \
     jq \
     libtool \
     linux-headers \
-    nasm \
     ninja \
     pkgconf \
     py3-pip \
     python3 \
     && \
-  apk --update --no-cache --repository https://alpine.global.ssl.fastly.net/alpine/v3.17/community/ add advancecomp && \
   curl -Ls https://github.com/lovell/aarch64-linux-musl-crosstools/archive/main.tar.gz | tar -hxzC / --strip-components=2 && \
   ln -s /usr/bin/pkg-config /bin/aarch64-linux-musl-pkg-config && \
   curl https://sh.rustup.rs -sSf | sh -s -- -y \

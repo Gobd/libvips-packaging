@@ -1,7 +1,7 @@
-FROM amazonlinux:2
-LABEL maintainer="Lovell Fuller <npm@lovell.info>"
+FROM arm64v8/amazonlinux:2
+LABEL maintainer="Kleis Auke Wolthuizen <info@kleisauke.nl>"
 
-# Create Amazon Linux 2 (glibc 2.26) container suitable for building Linux x64 binaries
+# Create Amazon Linux 2 (glibc 2.26) container suitable for building Linux ARM64v8-A binaries
 
 # Path settings
 ENV \
@@ -15,10 +15,8 @@ RUN \
   amazon-linux-extras install epel -y && \
   yum install -y --setopt=tsflags=nodocs \
     --exclude=gcc \
-    advancecomp \
     autoconf \
     automake \
-    brotli \
     bzip2 \
     cmake3 \
     curl \
@@ -30,7 +28,6 @@ RUN \
     gperf \
     jq \
     make \
-    nasm \
     patch \
     pkgconfig \
     python3 \
@@ -39,6 +36,7 @@ RUN \
     && \
   ln -s /usr/bin/gcc10-gcc /usr/bin/cc && \
   ln -s /usr/bin/gcc10-g++ /usr/bin/c++ && \
+  ln -s /usr/bin/gcc10-as /usr/bin/as && \
   ln -s /usr/bin/gcc10-ar /usr/bin/ar && \
   ln -s /usr/bin/gcc10-nm /usr/bin/nm && \
   ln -s /usr/bin/gcc10-ld /usr/bin/ld && \
@@ -48,6 +46,7 @@ RUN \
   curl https://sh.rustup.rs -sSf | sh -s -- -y \
     --no-modify-path \
     --profile minimal \
+    --default-host aarch64-unknown-linux-gnu \
     && \
   ln -s /usr/bin/cmake3 /usr/bin/cmake && \
   pip3 install meson ninja
@@ -55,8 +54,8 @@ RUN \
 # Compiler settings
 ENV \
   PKG_CONFIG="pkg-config --static" \
-  PLATFORM="linux-x64" \
-  FLAGS="-march=nehalem" \
+  PLATFORM="linux-arm64" \
+  FLAGS="-march=armv8-a" \
   MESON="--cross-file=/root/meson.ini"
 
 COPY Toolchain.cmake /root/

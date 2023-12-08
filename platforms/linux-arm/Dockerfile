@@ -1,26 +1,25 @@
-FROM centos:7
+FROM amazonlinux:2
 LABEL maintainer="Kleis Auke Wolthuizen <info@kleisauke.nl>"
 
-# Create CentOS 7 container suitable for cross-compiling Linux ARMv7-A binaries
+# Create Amazon Linux 2 (glibc 2.26) container suitable for cross-compiling Linux ARMv7-A binaries
 
 # Path settings
 ENV \
   RUSTUP_HOME="/usr/local/rustup" \
   CARGO_HOME="/usr/local/cargo" \
-  PATH="/usr/local/cargo/bin:/x-tools/armv7-unknown-linux-gnueabihf/bin:/opt/rh/rh-python38/root/usr/bin:/opt/rh/rh-python38/root/usr/local/bin:$PATH"
+  PATH="/usr/local/cargo/bin:/x-tools/armv7-unknown-linux-gnueabihf/bin:$PATH"
 
 # Build dependencies
 RUN \
   yum update -y && \
-  yum install -y epel-release centos-release-scl && \
+  amazon-linux-extras install epel -y && \
   yum group install -y "Development Tools" && \
   yum install -y --setopt=tsflags=nodocs \
-    advancecomp \
     cmake3 \
     gperf \
     jq \
     nasm \
-    rh-python38 \
+    python3 \
     # Needed by crosstool-ng
     help2man \
     ncurses-devel \
@@ -47,7 +46,7 @@ RUN \
   cd .. && \
   rm -rf crosstool-ng
 
-# Build cross-compiler (GCC 13.2.0 - glibc 2.17)
+# Build cross-compiler (GCC 13.2.0 - glibc 2.26)
 WORKDIR /x-tools/build
 
 COPY armv7-linux-gnueabihf.config /x-tools/build/.config

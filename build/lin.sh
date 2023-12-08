@@ -16,7 +16,7 @@ case ${PLATFORM} in
     DEPS=$PWD/deps
     TARGET=$PWD/target
     PACKAGE=$PWD
-    ROOT=$PWD/$PLATFORM
+    ROOT=$PWD/platforms/$PLATFORM
     VIPS_CPP_DEP=libvips-cpp.42.dylib
     ;;
 esac
@@ -53,7 +53,7 @@ if [ "$LINUX" = true ]; then
 fi
 
 # The ARMv7 binaries needs to be statically linked against libstdc++, since
-# libstdc++.so.6.0.29 (GLIBCXX_3.4.29) provided by GCC 11.2 isn't available on every OS
+# libstdc++.so.6.0.32 (GLIBCXX_3.4.32) provided by GCC 13.2 isn't available on every OS
 # Note: this is handled in devtoolset in a much better way, see: https://stackoverflow.com/a/19340023
 if [ "$PLATFORM" == "linux-arm" ]; then
   export LDFLAGS+=" -static-libstdc++"
@@ -99,33 +99,33 @@ unset PKG_CONFIG_PATH
 CURL="curl --silent --location --retry 5 --retry-max-time 30"
 
 # Dependency version numbers
-VERSION_ZLIB_NG=2.1.3
+VERSION_ZLIB_NG=2.1.4
 VERSION_FFI=3.4.4
-VERSION_GLIB=2.78.0
+VERSION_GLIB=2.78.1
 VERSION_XML2=2.11.5
 VERSION_EXIF=0.6.24
 VERSION_LCMS2=2.15
-VERSION_MOZJPEG=4.1.4
+VERSION_MOZJPEG=4.1.5
 VERSION_PNG16=1.6.40
 VERSION_SPNG=0.7.4
 VERSION_IMAGEQUANT=2.4.1
 VERSION_WEBP=1.3.2
 VERSION_TIFF=4.6.0
-VERSION_ORC=0.4.34
+VERSION_HWY=1.0.7
 VERSION_PROXY_LIBINTL=0.4
 VERSION_GDKPIXBUF=2.42.10
 VERSION_FREETYPE=2.13.2
 VERSION_EXPAT=2.5.0
 VERSION_ARCHIVE=3.7.2
 VERSION_FONTCONFIG=2.14.2
-VERSION_HARFBUZZ=8.2.1
+VERSION_HARFBUZZ=8.3.0
 VERSION_PIXMAN=0.42.2
 VERSION_CAIRO=1.18.0
 VERSION_FRIBIDI=1.0.13
 VERSION_PANGO=1.51.0
 VERSION_RSVG=2.57.0
 VERSION_AOM=3.7.0
-VERSION_HEIF=1.16.2
+VERSION_HEIF=1.17.3
 VERSION_CGIF=0.3.2
 VERSION_PDFIUM=6029
 VERSION_JEMALLOC=5.3.0
@@ -175,8 +175,8 @@ version_latest "png" "$VERSION_PNG16" "1705"
 version_latest "spng" "$VERSION_SPNG" "24289"
 version_latest "webp" "$VERSION_WEBP" "webmproject/libwebp"
 version_latest "tiff" "$VERSION_TIFF" "1738"
-version_latest "orc" "$VERSION_ORC" "2573"
-version_latest "proxy-libintl" "$VERSION_PROXY_LIBINTL" "368527"
+version_latest "highway" "$VERSION_HWY" "205809"
+version_latest "proxy-libintl" "$VERSION_PROXY_LIBINTL" "frida/proxy-libintl"
 version_latest "gdkpixbuf" "$VERSION_GDKPIXBUF" "9533"
 version_latest "freetype" "$VERSION_FREETYPE" "854"
 version_latest "expat" "$VERSION_EXPAT" "770"
@@ -250,7 +250,7 @@ $CURL https://github.com/zlib-ng/zlib-ng/archive/${VERSION_ZLIB_NG}.tar.gz | tar
 cd ${DEPS}/zlib-ng
 CFLAGS="${CFLAGS} -O3" cmake -G"Unix Makefiles" \
   -DCMAKE_TOOLCHAIN_FILE=${ROOT}/Toolchain.cmake -DCMAKE_INSTALL_PREFIX=${TARGET} -DCMAKE_INSTALL_LIBDIR=lib -DCMAKE_BUILD_TYPE=Release \
-  -DBUILD_SHARED_LIBS=FALSE -DZLIB_COMPAT=TRUE
+  -DBUILD_SHARED_LIBS=FALSE -DZLIB_COMPAT=TRUE -DWITH_ARMV6=FALSE
 make install/strip
 
 mkdir ${DEPS}/ffi
@@ -263,7 +263,7 @@ make install-strip
 mkdir ${DEPS}/glib
 $CURL https://download.gnome.org/sources/glib/$(without_patch $VERSION_GLIB)/glib-${VERSION_GLIB}.tar.xz | tar xJC ${DEPS}/glib --strip-components=1
 cd ${DEPS}/glib
-$CURL https://gist.github.com/kleisauke/284d685efa00908da99ea6afbaaf39ae/raw/e826724a837825226057347b75567059dabc85d4/glib-without-gregex.patch | patch -p1
+$CURL https://gist.githubusercontent.com/lovell/8d0de84a57dd10220cdeb8f64d7dd9ce/raw/1c0a5b5e1d5731bc1557df789e6d85b97f6a69dc/glib-without-gregex.patch | patch -p1
 meson setup _build --default-library=static --buildtype=release --strip --prefix=${TARGET} ${MESON} \
   --force-fallback-for=gvdb -Dnls=disabled -Dtests=false -Dinstalled_tests=false -Dlibmount=disabled -Dlibelf=disabled \
   -Dglib_assert=false -Dglib_checks=false ${DARWIN:+-Dbsymbolic_functions=false}
@@ -299,6 +299,10 @@ if [[ "$(nasm -v)" == "NASM version 2.10"* ]]; then
 fi
 $CURL https://storage.googleapis.com/aom-releases/libaom-${VERSION_AOM}.tar.gz | tar xzC ${DEPS}/aom --strip-components=1
 cd ${DEPS}/aom
+if [ "${PLATFORM%-*}" == "linux-musl" ]; then
+  # https://bugs.chromium.org/p/aomedia/issues/detail?id=2754
+  $CURL https://git.alpinelinux.org/aports/plain/main/aom/fix-stack-size-e53da0b.patch | patch -p1
+fi
 mkdir aom_build
 cd aom_build
 AOM_AS_FLAGS="${FLAGS}" cmake -G"Unix Makefiles" \
@@ -312,14 +316,16 @@ make install/strip
 mkdir ${DEPS}/heif
 $CURL https://github.com/strukturag/libheif/releases/download/v${VERSION_HEIF}/libheif-${VERSION_HEIF}.tar.gz | tar xzC ${DEPS}/heif --strip-components=1
 cd ${DEPS}/heif
-if [ "$PLATFORM" == "linux-arm" ]; then
-  # Remove -lstdc++ from Libs.private, it won't work with -static-libstdc++
-  sed -i'.bak' '/^Libs.private:/s/-lstdc++//g' libheif.pc.in
-fi
+# Downgrade minimum required CMake version to 3.12 - https://github.com/strukturag/libheif/issues/975
+sed -i'.bak' "/^cmake_minimum_required/s/3.16.3/3.12/" CMakeLists.txt
 CFLAGS="${CFLAGS} -O3" CXXFLAGS="${CXXFLAGS} -O3" cmake -G"Unix Makefiles" \
   -DCMAKE_TOOLCHAIN_FILE=${ROOT}/Toolchain.cmake -DCMAKE_INSTALL_PREFIX=${TARGET} -DCMAKE_INSTALL_LIBDIR=lib -DCMAKE_BUILD_TYPE=Release \
   -DBUILD_SHARED_LIBS=FALSE -DENABLE_PLUGIN_LOADING=0 -DWITH_EXAMPLES=0 -DWITH_LIBDE265=0 -DWITH_X265=0
 make install/strip
+if [ "$PLATFORM" == "linux-arm" ]; then
+  # Remove -lstdc++ from Libs.private, it won't work with -static-libstdc++
+  sed -i '/^Libs.private:/s/-lstdc++//g' ${TARGET}/lib/pkgconfig/libheif.pc
+fi
 
 mkdir ${DEPS}/jpeg
 $CURL https://github.com/mozilla/mozjpeg/archive/v${VERSION_MOZJPEG}.tar.gz | tar xzC ${DEPS}/jpeg --strip-components=1
@@ -364,12 +370,13 @@ CFLAGS="${CFLAGS} -pthread" ./configure --host=${CHOST} --prefix=${TARGET} --ena
   --disable-tools --disable-tests --disable-contrib --disable-docs --disable-mdi --disable-pixarlog --disable-old-jpeg --disable-cxx --disable-lzma --disable-zstd
 make install-strip
 
-mkdir ${DEPS}/orc
-$CURL https://gstreamer.freedesktop.org/data/src/orc/orc-${VERSION_ORC}.tar.xz | tar xJC ${DEPS}/orc --strip-components=1
-cd ${DEPS}/orc
-meson setup _build --default-library=static --buildtype=release --strip --prefix=${TARGET} ${MESON} \
-  -Dorc-test=disabled -Dbenchmarks=disabled -Dexamples=disabled -Dgtk_doc=disabled -Dtests=disabled -Dtools=disabled
-meson install -C _build --tag devel
+mkdir ${DEPS}/hwy
+$CURL https://github.com/google/highway/archive/${VERSION_HWY}.tar.gz | tar xzC ${DEPS}/hwy --strip-components=1
+cd ${DEPS}/hwy
+CFLAGS="${CFLAGS} -O3" CXXFLAGS="${CXXFLAGS} -O3" cmake -G"Unix Makefiles" \
+  -DCMAKE_TOOLCHAIN_FILE=${ROOT}/Toolchain.cmake -DCMAKE_INSTALL_PREFIX=${TARGET} -DCMAKE_INSTALL_LIBDIR=lib -DCMAKE_BUILD_TYPE=Release \
+  -DBUILD_SHARED_LIBS=FALSE -DBUILD_TESTING=0 -DHWY_ENABLE_CONTRIB=0 -DHWY_ENABLE_EXAMPLES=0 -DHWY_ENABLE_TESTS=0
+make install/strip
 
 mkdir ${DEPS}/gdkpixbuf
 $CURL https://download.gnome.org/sources/gdk-pixbuf/$(without_patch $VERSION_GDKPIXBUF)/gdk-pixbuf-${VERSION_GDKPIXBUF}.tar.xz | tar xJC ${DEPS}/gdkpixbuf --strip-components=1
@@ -410,7 +417,6 @@ make install-strip
 mkdir ${DEPS}/archive
 $CURL https://github.com/libarchive/libarchive/releases/download/v${VERSION_ARCHIVE}/libarchive-${VERSION_ARCHIVE}.tar.xz | tar xJC ${DEPS}/archive --strip-components=1
 cd ${DEPS}/archive
-
 ./configure --host=${CHOST} --prefix=${TARGET} --enable-static --disable-shared --disable-dependency-tracking \
   --disable-bsdtar --disable-bsdcat --disable-bsdcpio --disable-bsdunzip --disable-posix-regex-lib --disable-xattr --disable-acl \
   --without-bz2lib --without-libb2 --without-iconv --without-lz4 --without-zstd --without-lzma \
@@ -511,8 +517,6 @@ meson install -C _build --tag devel
 mkdir ${DEPS}/vips
 $CURL https://github.com/libvips/libvips/releases/download/v${VERSION_VIPS}/vips-$(without_prerelease $VERSION_VIPS).tar.xz | tar xJC ${DEPS}/vips --strip-components=1
 cd ${DEPS}/vips
-# Backport libarchive-based dzsave
-$CURL https://raw.githubusercontent.com/libvips/build-win64-mxe/master/build/patches/vips-8-pr-3476.patch | patch -p1
 if [ "$LINUX" = true ]; then
   # Ensure symbols from external libs (except for libglib-2.0.a and libgobject-2.0.a) are not exposed
   EXCLUDE_LIBS=$(find ${TARGET}/lib -maxdepth 1 -name '*.a' ! -name 'libglib-2.0.a' ! -name 'libgobject-2.0.a' -printf "-Wl,--exclude-libs=%f ")
@@ -524,7 +528,7 @@ fi
 # Disable building man pages, gettext po files, tools, and (fuzz-)tests
 sed -i'.bak' "/subdir('man')/{N;N;N;N;d;}" meson.build
 CFLAGS="${CFLAGS} -O3" CXXFLAGS="${CXXFLAGS} -O3" meson setup _build --default-library=shared --buildtype=release --strip --prefix=${TARGET} ${MESON} \
-  -Ddeprecated=false -Dintrospection=false -Dmodules=disabled -Dcfitsio=disabled -Dfftw=disabled -Djpeg-xl=disabled \
+  -Ddeprecated=false -Dintrospection=disabled -Dmodules=disabled -Dcfitsio=disabled -Dfftw=disabled -Djpeg-xl=disabled \
   -Dmagick=disabled -Dmatio=disabled -Dnifti=disabled -Dopenexr=disabled -Dopenjpeg=disabled -Dopenslide=disabled \
   -Dpoppler=disabled -Dquantizr=disabled \
   -Dppm=false -Danalyze=false -Dradiance=false \
@@ -614,12 +618,12 @@ printf "{\n\
   \"gperftool\": \"${VERSION_GPERFTOOL}\",\n\
   \"harfbuzz\": \"${VERSION_HARFBUZZ}\",\n\
   \"heif\": \"${VERSION_HEIF}\",\n\
+  \"highway\": \"${VERSION_HWY}\",\n\
   \"imagequant\": \"${VERSION_IMAGEQUANT}\",\n\
   \"jemallic\": \"${VERSION_JEMALLOC}\",\n\
   \"lcms\": \"${VERSION_LCMS2}\",\n\
   \"libtool\": \"${VERSION_LCMS2}\",\n\
   \"mozjpeg\": \"${VERSION_MOZJPEG}\",\n\
-  \"orc\": \"${VERSION_ORC}\",\n\
   \"pango\": \"${VERSION_PANGO}\",\n\
   \"pdfium\": \"${VERSION_PDFIUM}\",\n\
   \"pixman\": \"${VERSION_PIXMAN}\",\n\
@@ -646,9 +650,6 @@ tar chzf ${PACKAGE}/libvips-${VERSION_VIPS}-${PLATFORM}.tar.gz \
   lib \
   versions.json \
   THIRD-PARTY-NOTICES.md
-
-# Recompress using AdvanceCOMP, ~5% smaller
-advdef --recompress --shrink-insane ${PACKAGE}/libvips-${VERSION_VIPS}-${PLATFORM}.tar.gz
 
 # Allow tarballs to be read outside container
 chmod 644 ${PACKAGE}/libvips-${VERSION_VIPS}-${PLATFORM}.tar.gz
