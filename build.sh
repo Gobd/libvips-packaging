@@ -79,12 +79,12 @@ if ! [ -x "$(command -v docker)" ]; then
 fi
 
 # Update base images
-for baseimage in alpine:3.12 amazonlinux:2 debian:bullseye; do
+for baseimage in amazonlinux:2023; do
   docker pull $baseimage
 done
 
 # Linux (x64, ARMv7 and ARM64v8)
-for flavour in linux-x64 linux-arm linux-arm64 linux-musl-x64 linux-musl-arm64; do
+for flavour in linux-x64 linux-arm64; do
   if [ $PLATFORM = "all" ] || [ $PLATFORM = $flavour ]; then
     if [ $PLATFORM = "linux-x64" ] && [ $(uname -m) == "arm64" ] ; then
       echo "Cross building $flavour..."
