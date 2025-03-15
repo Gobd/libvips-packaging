@@ -126,6 +126,7 @@ VERSION_RSVG=2.59.91
 VERSION_AOM=3.12.0
 VERSION_HEIF=1.19.7
 VERSION_CGIF=0.5.0
+VERSION_PDFIUM=7060
 
 # Remove patch version component
 without_patch() {
@@ -184,7 +185,7 @@ version_latest "rsvg" "$VERSION_RSVG" "5420" "unstable"
 version_latest "aom" "$VERSION_AOM" "17628"
 version_latest "heif" "$VERSION_HEIF" "64439"
 version_latest "cgif" "$VERSION_CGIF" "dloebl/cgif"
-if [ "$ALL_AT_VERSION_LATEST" = "false" ]; then exit 1; fi
+# if [ "$ALL_AT_VERSION_LATEST" = "false" ]; then exit 1; fi
 
 # Download and build dependencies from source
 
@@ -418,6 +419,25 @@ meson setup _build --default-library=static --buildtype=release --strip --prefix
   -Ddocumentation=false -Dbuild-testsuite=false -Dbuild-examples=false -Dintrospection=disabled -Dfontconfig=enabled
 meson install -C _build --tag devel
 
+mkdir ${DEPS}/pdfium
+$CURL https://github.com/bblanchon/pdfium-binaries/releases/download/chromium%2F${VERSION_PDFIUM}/pdfium-$(echo "$PLATFORM" | sed -E 's/musl/-musl/g; s/v[6-8]//g; s/darwin/mac/g').tgz | tar xzC ${TARGET}
+cd ${DEPS}/pdfium
+
+mkdir -p ${TARGET}/lib/pkgconfig
+ls -l ${TARGET}/lib/pkgconfig
+cat > ${TARGET}/lib/pkgconfig/pdfium.pc << EOF
+prefix=${TARGET}
+exec_prefix=\${prefix}
+libdir=\${exec_prefix}/lib
+includedir=\${prefix}/include
+Name: pdfium
+Description: pdfium
+Version: ${VERSION_PDFIUM}
+Requires:
+Libs: -L\${libdir} -lpdfium
+Cflags: -I\${includedir}
+EOF
+
 mkdir ${DEPS}/rsvg
 $CURL https://download.gnome.org/sources/librsvg/$(without_patch $VERSION_RSVG)/librsvg-${VERSION_RSVG}.tar.xz | tar xJC ${DEPS}/rsvg --strip-components=1
 cd ${DEPS}/rsvg
@@ -463,7 +483,7 @@ sed -i'.bak' "/subdir('man')/{N;N;N;N;d;}" meson.build
 CFLAGS="${CFLAGS} -O3" CXXFLAGS="${CXXFLAGS} -O3" meson setup _build --default-library=shared --buildtype=release --strip --prefix=${TARGET} ${MESON} \
   -Ddeprecated=false -Dexamples=false -Dintrospection=disabled -Dmodules=disabled -Dcfitsio=disabled -Dfftw=disabled -Djpeg-xl=disabled \
   -Dmagick=disabled -Dmatio=disabled -Dnifti=disabled -Dopenexr=disabled -Dopenjpeg=disabled -Dopenslide=disabled \
-  -Dpdfium=disabled -Dpoppler=disabled -Dquantizr=disabled \
+  -Dpoppler=disabled -Dquantizr=disabled \
   -Dppm=false -Danalyze=false -Dradiance=false \
   ${LINUX:+-Dcpp_link_args="$LDFLAGS -Wl,-Bsymbolic-functions -Wl,--version-script=$DEPS/vips/vips.map $EXCLUDE_LIBS"}
 meson install -C _build --tag runtime,devel
