@@ -19,7 +19,7 @@ Run the top-level [build script](build.sh) without parameters for help.
 
 ### Linux
 
-One [build script](build/lin.sh) is used to (cross-)compile
+One [build script](build/posix.sh) is used to (cross-)compile
 the same shared libraries within multiple containers.
 
 * [x64 glibc](platforms/linux-x64/Dockerfile)
@@ -38,8 +38,8 @@ static "web" releases are [post-processed](build/win.sh) within a [container](pl
 Uses a macOS virtual machine hosted by GitHub to compile the shared libraries.
 The dylib files are compiled within the same build script as Linux.
 
-* x64 (native)
-* ARM64 (cross-compiled)
+* x64
+* ARM64
 
 Dependency paths are modified to use the relative `@loader_path` with `install_name_tool`.
 
@@ -52,4 +52,4 @@ the terms of [various licences](THIRD-PARTY-NOTICES.md), all of which
 are compatible with the Apache 2.0 Licence.
 
 [^1]: https://github.com/kleisauke/net-vips/blob/master/build/Build.cs
-[^2]: https://github.com/kleisauke/pyvips-binary/blob/main/.github/workflows/build-release.yml
+[^2]: https://github.com/kleisauke/pyvips-binary/blob/main/.github/workflows/ci.yml

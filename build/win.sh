@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -e
 
+# Dependency version numbers
+source /packaging/versions.properties
+
 VERSION_VIPS_SHORT=${VERSION_VIPS%.[[:digit:]]*}
 
 # Common options for curl
@@ -14,16 +17,20 @@ VARIANT=static
 
 case "${PLATFORM#*-}" in
   x64) ARCH=w64 ;;
-  x64.net452)
+  x64.net462)
     ARCH=w64
     VARIANT=static-ffi
     ;;
   x86) ARCH=w32 ;;
-  x86.net452)
+  x86.net462)
     ARCH=w32
     VARIANT=static-ffi
     ;;
   arm64) ARCH=arm64 ;;
+  arm64.net481)
+    ARCH=arm64
+    VARIANT=static-ffi
+    ;;
 esac
 
 FILENAME="vips-dev-${ARCH}-web-${VERSION_VIPS}-${VARIANT}.zip"

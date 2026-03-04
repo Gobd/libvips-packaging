@@ -1,13 +1,13 @@
-FROM alpine:3.15
+FROM alpine:3.20
 LABEL maintainer="Kleis Auke Wolthuizen <info@kleisauke.nl>"
 
-# Create Alpine 3.15 (musl 1.2.2) container suitable for building Linux x64 binaries
+# Create Alpine 3.20 (musl 1.2.5) container suitable for building musl-based Linux x64 binaries
 
 # Path settings
 ENV \
   RUSTUP_HOME="/usr/local/rustup" \
   CARGO_HOME="/usr/local/cargo" \
-  PATH="/usr/local/cargo/bin:$PATH"
+  PATH="/usr/local/cargo/bin:/root/.local/bin:$PATH"
 
 # Musl defaults to static libs but we need them to be dynamic for host toolchain.
 # The toolchain will produce static libs by default.
@@ -20,11 +20,13 @@ RUN \
   apk --update --no-cache add \
     autoconf \
     automake \
+    bash \
     binutils \
     build-base \
     cmake \
     coreutils \
     curl \
+    curl-dev \
     findutils \
     git \
     gperf \
@@ -34,23 +36,23 @@ RUN \
     nasm \
     ninja \
     openssl-dev \
+    pipx \
     pkgconf \
-    py3-packaging \
-    py3-pip \
-    python3 \
     && \
   curl https://sh.rustup.rs -sSf | sh -s -- -y \
     --no-modify-path \
     --profile minimal \
+    --default-toolchain nightly \
     && \
   cargo install cargo-c --locked && \
-  pip3 install meson
+  pipx install meson
 
 # Compiler settings
 ENV \
   PKG_CONFIG="pkg-config --static" \
   PLATFORM="linux-musl-x64" \
   FLAGS="-march=nehalem" \
+  RUSTFLAGS="-Zlocation-detail=none -Zfmt-debug=none" \
   MESON="--cross-file=/root/meson.ini"
 
 COPY Toolchain.cmake /root/
